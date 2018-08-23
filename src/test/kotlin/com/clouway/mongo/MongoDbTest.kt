@@ -4,8 +4,11 @@ import org.hamcrest.CoreMatchers.`is` as Is
 import org.junit.Assert.assertThat
 import java.util.*
 import com.github.fakemongo.junit.FongoRule
+import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
 import com.mongodb.client.model.Filters.*
+import com.mongodb.client.model.Updates.*
+import org.bson.BsonType
 import org.bson.Document
 import org.junit.After
 import org.junit.Before
@@ -59,6 +62,7 @@ class MongoDbTest {
             "clothes" to ann.clothes))
 
     lateinit var db: MongoDatabase
+    lateinit var coll: MongoCollection<Document>
 
     @Before
     fun setUp(){
@@ -66,6 +70,7 @@ class MongoDbTest {
         db.getCollection("people").insertMany(
                 listOf(johnDoc, peterDoc, annDoc)
         )
+        coll = db.getCollection("people")
     }
 
     @After
@@ -74,9 +79,7 @@ class MongoDbTest {
     }
 
     @Test
-    fun writeToDatabase(){
-
-        val coll = db.getCollection("people")
+    fun writeDocument(){
         coll.insertOne(Document("_id", 123))
 
         val cursor = db.getCollection("people").find(eq("_id", 123))
@@ -85,19 +88,15 @@ class MongoDbTest {
     }
 
     @Test
-    fun readFromDatabase(){
-        val coll = db.getCollection("people")
+    fun readDocument(){
         val cursor = coll.find(eq("name", "John"))
 
         assertThat(cursor.first().getInteger("age"), Is(john.age))
     }
 
     @Test
-    fun updateInDatabase(){
-        val coll = db.getCollection("people")
-        coll.updateOne(eq("name", "John"), Document(
-                "\$set", Document("name", "Johny")
-        ))
+    fun updateDocumentField(){
+        coll.updateOne(eq("name", "John"), set("name", "Johny"))
 
         val cursor = coll.find(eq("_id", john.id))
 
@@ -105,10 +104,85 @@ class MongoDbTest {
     }
 
     @Test
-    fun deleteFromDatabase(){
-        val coll = db.getCollection("people")
+    fun combinedUpdate(){
+        coll.updateOne(eq("name", "John"), combine(set("name", "Johny"), set("age", 19)))
+
+        val cursor = coll.find(eq("_id", john.id))
+
+        assertThat(cursor.first().getString("name"), Is("Johny"))
+        assertThat(cursor.first().getInteger("age"), Is(19))
+    }
+
+    @Test
+    fun deleteDocument(){
         val collCount = coll.count()
         coll.deleteOne(eq("name", john.name))
         assertThat(coll.count(), Is(collCount - 1))
+    }
+
+    @Test
+    fun deleteDocumentGroupByType(){
+        coll.deleteMany(type("name", BsonType.STRING))
+        assertThat(coll.count(), Is(0L))
+    }
+
+    @Test
+    fun queryByAnd(){
+        val cursor = coll.find(and(eq("name", "John"), eq("age", john.age)))
+        assertThat(cursor.count(), Is(1))
+    }
+
+    @Test
+    fun queryByOr(){
+        val cursor = coll.find(or(eq("name", "John"), eq("age", ann.age)))
+        assertThat(cursor.count(), Is(2))
+    }
+
+    @Test
+    fun queryComposite(){
+        val cursor = coll.find(
+                or(
+                    eq("name", "John"),
+                    and(
+                        eq("age", ann.age),
+                        eq("clothes", mapOf("feet" to "sandals"))
+                    )
+                )
+        )
+        assertThat(cursor.count(), Is(1))
+    }
+
+    @Test
+    fun queryInverse(){
+        val cursor = coll.find(not(eq("name", "John")))
+
+        assertThat(cursor.count(), Is(2))
+    }
+
+    @Test
+    fun queryNor(){
+        val cursor = coll.find(
+                nor(
+                        eq("name", "John"),
+                        eq("age", ann.age)
+                )
+        )
+        assertThat(cursor.count(), Is(1))
+    }
+
+    @Test
+    fun queryRegex(){
+        val cursor = coll.find(
+                regex("name", "^[J]+.*$")
+        )
+        assertThat(cursor.count(), Is(1))
+    }
+
+    @Test
+    fun queryNumeric(){
+        val cursor = coll.find(
+                gte("age", 23)
+        )
+        assertThat(cursor.count(), Is(3))
     }
 }
