@@ -185,4 +185,18 @@ class MongoDbTest {
         )
         assertThat(cursor.count(), Is(3))
     }
+
+    @Test
+    fun atomicQuery(){
+        val cursor = coll.findOneAndUpdate(
+                eq("name", "John"), set("name", "Steve")
+        )
+        assertThat(cursor.getString("name"), Is("John"))
+        //returns object before update
+        val updatedCursor = coll.find(eq("name", "Steve"))
+        //object is updated
+        assertThat(updatedCursor.first().getString("name"), Is("Steve"))
+        assertThat(updatedCursor.first().getInteger("age"), Is(john.age))
+
+    }
 }
