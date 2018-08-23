@@ -83,7 +83,7 @@ class DocumentTest {
 //        document.append("objVal", objVal)
         //Custom objects have no codec
 
-        val db = fongoRule.fongo.getDatabase("testDb")
+        val db = fongoRule.mongoClient.getDatabase("testDb")
         db.getCollection("testCollection").insertOne(document)
 
         val cursor = db.getCollection("testCollection").find(

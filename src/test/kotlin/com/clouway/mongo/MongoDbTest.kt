@@ -6,16 +6,16 @@ import java.util.*
 import com.github.fakemongo.junit.FongoRule
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
+import com.mongodb.client.model.*
 import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.Updates.*
-import org.bson.BSON
-import org.bson.BasicBSONObject
 import org.bson.BsonType
 import org.bson.Document
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.util.concurrent.TimeUnit
 
 
 /**
@@ -68,7 +68,9 @@ class MongoDbTest {
 
     @Before
     fun setUp(){
-        db = fongoRule.fongo.getDatabase("mydb")
+        db = fongoRule.mongoClient.getDatabase("mydb")
+        db.getCollection("people").createIndex(Indexes.ascending("name"))
+        // _id is indexed by default
         db.getCollection("people").insertMany(
                 listOf(johnDoc, peterDoc, annDoc)
         )
@@ -83,6 +85,22 @@ class MongoDbTest {
     @Test
     fun writeDocument(){
         coll.insertOne(Document("_id", 123))
+
+        val cursor = db.getCollection("people").find(eq("_id", 123))
+
+        assertThat(cursor.first().getInteger("_id"), Is(123))
+    }
+
+    @Test
+    fun writeTemporaryDocument(){
+        coll.createIndex(Indexes.ascending("tempIndex"),
+                IndexOptions().expireAfter(1, TimeUnit.DAYS))
+        // Fongo does not support TTL indexes
+
+        coll.insertOne(Document(mapOf(
+                "_id" to 123,
+                "tempIndex" to "tempData"
+        )))
 
         val cursor = db.getCollection("people").find(eq("_id", 123))
 
@@ -218,7 +236,61 @@ class MongoDbTest {
         val descending = coll.find(
                 gte("age", 23)
         ).sort(Document("name", -1))
+        // The name field is indexes so this sort will be
+        // faster than others
         assertThat(ascending.first().getString("name"), Is(ann.name))
         assertThat(descending.first().getString("name"), Is(peter.name))
+    }
+    
+    @Test
+    fun compositeSort(){
+        val duplicateAnn = Document(mapOf("_id" to UUID.randomUUID(),
+                "name" to ann.name,
+                "age" to john.age,
+                "clothes" to john.clothes))
+
+        coll.insertOne(duplicateAnn)
+        val ascNameDescAge = coll.find(
+                gte("age", 23)
+        ).sort(and(Document("name", 1), Document("age", -1)))
+        assertThat(ascNameDescAge.first().getInteger("age"), Is(john.age))
+        assertThat(ascNameDescAge.skip(1).first().getString("name"), Is(ann.name))
+    }
+
+    @Test
+    fun bulkWrite(){
+        coll.bulkWrite(
+                listOf(
+                        InsertOneModel(Document("name", "Ivan")),
+                        DeleteOneModel(Document("name", "John")),
+                        UpdateOneModel(Document("name", "Ivan"), set("age", 19))
+                ),
+                BulkWriteOptions().ordered(true)
+        //Ordered is true by default
+        )
+        val cursor = coll.find(eq("name", "Ivan"))
+        assertThat(cursor.first().getInteger("age"), Is(19))
+    }
+
+    @Test
+    fun performCountAggregation(){
+
+        val duplicateAnn = Document(mapOf("_id" to UUID.randomUUID(),
+                "name" to ann.name,
+                "age" to john.age,
+                "clothes" to john.clothes))
+
+        coll.insertOne(duplicateAnn)
+
+        val cursor = coll.aggregate(
+                listOf(
+                        Aggregates.match(Filters.gte("age", 23)),
+                        Aggregates.group("name",
+                                Accumulators.sum("count", 1)),
+                        Aggregates.sort(Document("_id", 1))
+                )
+        )
+
+        assertThat(cursor.first().getInteger("count"), Is(2))
     }
 }
