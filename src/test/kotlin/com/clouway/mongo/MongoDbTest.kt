@@ -8,6 +8,8 @@ import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
 import com.mongodb.client.model.Filters.*
 import com.mongodb.client.model.Updates.*
+import org.bson.BSON
+import org.bson.BasicBSONObject
 import org.bson.BsonType
 import org.bson.Document
 import org.junit.After
@@ -198,5 +200,25 @@ class MongoDbTest {
         assertThat(updatedCursor.first().getString("name"), Is("Steve"))
         assertThat(updatedCursor.first().getInteger("age"), Is(john.age))
 
+    }
+
+    @Test
+    fun queryPagination(){
+        val cursor = coll.find(
+                gte("age", 23)
+        ).skip(1).limit(1)
+        assertThat(cursor.count(), Is(1))
+    }
+
+    @Test
+    fun sortQuery(){
+        val ascending = coll.find(
+                gte("age", 23)
+        ).sort(Document("name", 1))
+        val descending = coll.find(
+                gte("age", 23)
+        ).sort(Document("name", -1))
+        assertThat(ascending.first().getString("name"), Is(ann.name))
+        assertThat(descending.first().getString("name"), Is(peter.name))
     }
 }
