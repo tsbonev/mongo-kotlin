@@ -20,8 +20,6 @@ import java.util.concurrent.TimeUnit
 import com.mongodb.client.model.CreateCollectionOptions
 
 
-
-
 /**
  * @author Tsvetozar Bonev (tsbonev@gmail.com)
  */
@@ -71,7 +69,7 @@ class FongoTest {
     lateinit var coll: MongoCollection<Document>
 
     @Before
-    fun setUp(){
+    fun setUp() {
         db = fongoRule.mongoClient.getDatabase("mydb")
         db.getCollection("people").createIndex(Indexes.ascending("name"))
         // _id is indexed by default
@@ -82,12 +80,12 @@ class FongoTest {
     }
 
     @After
-    fun cleanUp(){
+    fun cleanUp() {
         db.drop()
     }
 
     @Test
-    fun writeDocument(){
+    fun writeDocument() {
         coll.insertOne(Document("_id", 123))
 
         val cursor = db.getCollection("people").find(eq("_id", 123))
@@ -96,7 +94,7 @@ class FongoTest {
     }
 
     @Test
-    fun createCappedCollection(){
+    fun createCappedCollection() {
         db.createCollection("log", CreateCollectionOptions()
                 .capped(true)
                 .maxDocuments(100)
@@ -107,7 +105,7 @@ class FongoTest {
     }
 
     @Test
-    fun writeTemporaryDocument(){
+    fun writeTemporaryDocument() {
         coll.createIndex(Indexes.ascending("expirationDate"),
                 IndexOptions().expireAfter(1, TimeUnit.DAYS))
         // TTL indexes must be date fields
@@ -131,14 +129,14 @@ class FongoTest {
     }
 
     @Test
-    fun readDocument(){
+    fun readDocument() {
         val cursor = coll.find(eq("name", "John"))
 
         assertThat(cursor.first().getInteger("age"), Is(john.age))
     }
 
     @Test
-    fun updateDocumentField(){
+    fun updateDocumentField() {
         coll.updateOne(eq("name", "John"), set("name", "Johny"))
 
         val cursor = coll.find(eq("_id", john.id))
@@ -147,7 +145,7 @@ class FongoTest {
     }
 
     @Test
-    fun combinedUpdate(){
+    fun combinedUpdate() {
         coll.updateOne(eq("name", "John"), combine(set("name", "Johny"), set("age", 19)))
 
         val cursor = coll.find(eq("_id", john.id))
@@ -157,53 +155,62 @@ class FongoTest {
     }
 
     @Test
-    fun deleteDocument(){
+    fun deleteDocument() {
         val collCount = coll.count()
         coll.deleteOne(eq("name", john.name))
         assertThat(coll.count(), Is(collCount - 1))
     }
 
     @Test
-    fun deleteDocumentGroupByType(){
+    fun deleteDocumentGroupByType() {
         coll.deleteMany(type("name", BsonType.STRING))
         assertThat(coll.count(), Is(0L))
     }
 
     @Test
-    fun queryByAnd(){
+    fun queryProjection() {
+        val cursor = coll.find(eq("_id", john.id)).projection(
+                Projections.fields(
+                        Projections.include("name"),
+                        Projections.excludeId()))
+        assertThat(cursor.first(), Is(Document("name", "John")))
+    }
+
+    @Test
+    fun queryByAnd() {
         val cursor = coll.find(and(eq("name", "John"), eq("age", john.age)))
         assertThat(cursor.count(), Is(1))
     }
 
     @Test
-    fun queryByOr(){
+    fun queryByOr() {
         val cursor = coll.find(or(eq("name", "John"), eq("age", ann.age)))
         assertThat(cursor.count(), Is(2))
     }
 
     @Test
-    fun queryComposite(){
+    fun queryComposite() {
         val cursor = coll.find(
                 or(
-                    eq("name", "John"),
-                    and(
-                        eq("age", ann.age),
-                        eq("clothes", mapOf("feet" to "sandals"))
-                    )
+                        eq("name", "John"),
+                        and(
+                                eq("age", ann.age),
+                                eq("clothes", mapOf("feet" to "sandals"))
+                        )
                 )
         )
         assertThat(cursor.count(), Is(1))
     }
 
     @Test
-    fun queryInverse(){
+    fun queryInverse() {
         val cursor = coll.find(not(eq("name", "John")))
 
         assertThat(cursor.count(), Is(2))
     }
 
     @Test
-    fun queryNor(){
+    fun queryNor() {
         val cursor = coll.find(
                 nor(
                         eq("name", "John"),
@@ -214,7 +221,7 @@ class FongoTest {
     }
 
     @Test
-    fun queryRegex(){
+    fun queryRegex() {
         val cursor = coll.find(
                 regex("name", "^[J]+.*$")
         )
@@ -222,7 +229,7 @@ class FongoTest {
     }
 
     @Test
-    fun queryOnSubdocumentCollection(){
+    fun queryOnSubdocumentCollection() {
         val cursor = coll.find(
                 eq("clothes.feet", "sandals")
         )
@@ -230,7 +237,7 @@ class FongoTest {
     }
 
     @Test
-    fun queryNumeric(){
+    fun queryNumeric() {
         val cursor = coll.find(
                 gte("age", 23)
         )
@@ -238,7 +245,7 @@ class FongoTest {
     }
 
     @Test
-    fun atomicQuery(){
+    fun atomicQuery() {
         val cursor = coll.findOneAndUpdate(
                 eq("name", "John"), set("name", "Steve")
         )
@@ -252,7 +259,7 @@ class FongoTest {
     }
 
     @Test
-    fun queryPagination(){
+    fun queryPagination() {
         val cursor = coll.find(
                 gte("age", 23)
         ).skip(1).limit(1)
@@ -260,7 +267,7 @@ class FongoTest {
     }
 
     @Test
-    fun sortQuery(){
+    fun sortQuery() {
         val ascending = coll.find(
                 gte("age", 23)
         ).sort(Document("name", 1))
@@ -272,9 +279,9 @@ class FongoTest {
         assertThat(ascending.first().getString("name"), Is(ann.name))
         assertThat(descending.first().getString("name"), Is(peter.name))
     }
-    
+
     @Test
-    fun compositeSort(){
+    fun compositeSort() {
         val duplicateAnn = Document(mapOf("_id" to UUID.randomUUID(),
                 "name" to ann.name,
                 "age" to john.age,
@@ -289,7 +296,7 @@ class FongoTest {
     }
 
     @Test
-    fun bulkWrite(){
+    fun bulkWrite() {
         coll.bulkWrite(
                 listOf(
                         InsertOneModel(Document("name", "Ivan")),
@@ -297,14 +304,14 @@ class FongoTest {
                         UpdateOneModel(Document("name", "Ivan"), set("age", 19))
                 ),
                 BulkWriteOptions().ordered(true)
-        //Ordered is true by default
+                //Ordered is true by default
         )
         val cursor = coll.find(eq("name", "Ivan"))
         assertThat(cursor.first().getInteger("age"), Is(19))
     }
 
     @Test
-    fun performCountAggregation(){
+    fun performCountAggregation() {
 
         val duplicateAnn = Document(mapOf("_id" to UUID.randomUUID(),
                 "name" to ann.name,
