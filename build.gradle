@@ -23,6 +23,7 @@ dependencies {
     testCompile "org.jetbrains.kotlin:kotlin-test:1.2.51"
     testCompile "org.jetbrains.kotlin:kotlin-test-junit:1.2.51"
     testCompile 'com.github.fakemongo:fongo:2.2.0-RC2'
+    compile 'de.bwaldvogel:mongo-java-server:1.8.0'
 }
 
 compileKotlin {

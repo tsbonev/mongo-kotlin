@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit
 /**
  * @author Tsvetozar Bonev (tsbonev@gmail.com)
  */
-class MongoDbTest {
+class FongoTest {
 
     @Rule
     @JvmField
