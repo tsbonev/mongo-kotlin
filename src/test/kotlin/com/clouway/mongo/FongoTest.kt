@@ -15,7 +15,11 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.time.Instant
 import java.util.concurrent.TimeUnit
+import com.mongodb.client.model.CreateCollectionOptions
+
+
 
 
 /**
@@ -92,14 +96,33 @@ class FongoTest {
     }
 
     @Test
+    fun createCappedCollection(){
+        db.createCollection("log", CreateCollectionOptions()
+                .capped(true)
+                .maxDocuments(100)
+                .autoIndex(false) // don't index "_id" field
+                .sizeInBytes(256))
+        // Mongo's minimum cap is 256
+        // Size always round up to the next multiple of 256
+    }
+
+    @Test
     fun writeTemporaryDocument(){
-        coll.createIndex(Indexes.ascending("tempIndex"),
+        coll.createIndex(Indexes.ascending("expirationDate"),
                 IndexOptions().expireAfter(1, TimeUnit.DAYS))
-        // Fongo does not support TTL indexes
+        // TTL indexes must be date fields
+        // Fongo as of 18.08.24 does not support TTL indexes
+
+        // MongoDB itself runs a background thread every 60 seconds
+        // checking for expired TTL
+
+        // Setting expireAfter to 0
+        // makes the set date against the field
+        // the de facto expiration date
 
         coll.insertOne(Document(mapOf(
                 "_id" to 123,
-                "tempIndex" to "tempData"
+                "expirationDate" to Date.from(Instant.now())
         )))
 
         val cursor = db.getCollection("people").find(eq("_id", 123))
