@@ -23,7 +23,7 @@ import kotlin.collections.ArrayList
  *
  * @author Tsvetozar Bonev (tsbonev@gmail.com)
  */
-class DocumentTest {
+class DocumentConversionTest {
 
     @Rule
     @JvmField
@@ -32,7 +32,7 @@ class DocumentTest {
     data class TestData(val data: String)
 
     @Test
-    fun documentConversion(){
+    fun documentConversion() {
 
         val id = UUID.randomUUID()
         val intVal = 1
@@ -88,21 +88,21 @@ class DocumentTest {
 
         val cursor = db.getCollection("testCollection").find(
                 and(
-                    eq("_id", id),
-                    eq("intVal", intVal),
-                    eq("longVal", longVal),
-                    eq("doubleVal", doubleVal),
-                    eq("stringVal", stringVal),
+                        eq("_id", id),
+                        eq("intVal", intVal),
+                        eq("longVal", longVal),
+                        eq("doubleVal", doubleVal),
+                        eq("stringVal", stringVal),
 //                    eq("intArrayVal", intArrayVal),
 //                    eq("charArrayVal", charArrayVal),
 //                    eq("javaArray", javaArray),
-                    eq("byteArrayVal", byteArray),
-                    eq("homListVal", homogeneousListVal),
-                    eq("hetListVal", heterogeneousListVal),
+                        eq("byteArrayVal", byteArray),
+                        eq("homListVal", homogeneousListVal),
+                        eq("hetListVal", heterogeneousListVal),
 //                    eq("dateListVal", dateInListVal),
-                    eq("mapVal", mapVal),
+                        eq("mapVal", mapVal),
 //                    eq("ldtVal", ldtVal),
-                    eq("utilDateVal", utilDateVal)
+                        eq("utilDateVal", utilDateVal)
 //                    eq("instantVal", instant)
 //                    eq("objVal", objVal)
                 )
@@ -123,7 +123,7 @@ class DocumentTest {
         //Maps get converted to Documents
 
         val documentMap = Document()
-        mapVal.forEach{
+        mapVal.forEach {
             documentMap.append(it.key, it.value)
         }
 
