@@ -222,6 +222,14 @@ class FongoTest {
     }
 
     @Test
+    fun queryOnSubdocumentCollection(){
+        val cursor = coll.find(
+                eq("clothes.feet", "sandals")
+        )
+        assertThat(cursor.first().getString("name"), Is(peter.name))
+    }
+
+    @Test
     fun queryNumeric(){
         val cursor = coll.find(
                 gte("age", 23)
