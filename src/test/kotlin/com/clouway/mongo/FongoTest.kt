@@ -18,6 +18,12 @@ import org.junit.Test
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 import com.mongodb.client.model.CreateCollectionOptions
+import com.vividsolutions.jts.geom.Dimension.L
+import org.bson.codecs.configuration.CodecRegistries
+import org.bson.codecs.configuration.CodecRegistry
+import org.bson.codecs.pojo.PojoCodecProvider
+import java.time.LocalDate
+import java.time.LocalDateTime
 
 
 /**
@@ -70,13 +76,28 @@ class FongoTest {
 
     @Before
     fun setUp() {
+
+        val pojoCodecProvider = PojoCodecProvider.builder().automatic(true).build()
+
+
+
         db = fongoRule.mongoClient.getDatabase("mydb")
+
+        //Get the default codec
+        var defaulCodecRegistry : CodecRegistry = db.codecRegistry
+
+        //Combine the default codec with the pojo codec
+        val pojoCodecRegistry = CodecRegistries.fromRegistries(
+                defaulCodecRegistry,
+                CodecRegistries.fromProviders(pojoCodecProvider))
+
         db.getCollection("people").createIndex(Indexes.ascending("name"))
         // _id is indexed by default
         db.getCollection("people").insertMany(
                 listOf(johnDoc, peterDoc, annDoc)
         )
-        coll = db.getCollection("people")
+        coll = db.getCollection("people").withCodecRegistry(
+                pojoCodecRegistry)
     }
 
     @After
@@ -91,6 +112,37 @@ class FongoTest {
         val cursor = db.getCollection("people").find(eq("_id", 123))
 
         assertThat(cursor.first().getInteger("_id"), Is(123))
+    }
+
+    @Test
+    fun writeObject(){
+        //With the POJO codec saving pojos is possible as a document
+        val time = LocalDateTime.of(1, 1, 1, 1, 1, 1, 1)
+        val document = Document()
+        document.append("_id", 1L)
+        document.append("obj", TestData("123", TestEnum.ONE, time))
+        coll.insertOne(document)
+        assertThat(
+                coll.find(eq("_id", 1L)).first()["obj"] as Document,
+                Is(Document(mapOf(
+                        "data" to "123",
+                        "date" to Document(
+                                mapOf(
+                                        "dayOfMonth" to 1,
+                                        "dayOfWeek" to "MONDAY",
+                                        "dayOfYear" to 1,
+                                        "hour" to 1,
+                                        "minute" to 1,
+                                        "month" to "JANUARY",
+                                        "monthValue" to 1,
+                                        "nano" to 1,
+                                        "second" to 1,
+                                        "year" to 1
+                                )
+                        ),
+                        "enum" to "ONE"
+                )))
+        )
     }
 
     @Test

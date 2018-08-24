@@ -13,6 +13,8 @@ import org.hamcrest.CoreMatchers.`is` as Is
 import org.junit.Assert.assertThat
 import kotlin.collections.ArrayList
 
+
+
 /**
  * Inconvertible types:
  * Non-byte arrays
@@ -28,8 +30,6 @@ class DocumentConversionTest {
     @Rule
     @JvmField
     val fongoRule = FongoRule()
-
-    data class TestData(val data: String)
 
     @Test
     fun documentConversion() {
@@ -50,7 +50,8 @@ class DocumentConversionTest {
         val ldtVal = LocalDateTime.now()
         val utilDateVal = Date.from(Instant.now())
         val instant = Instant.now()
-        val objVal = TestData("::data::")
+        val objVal = TestData("::data::", TestEnum.ONE, LocalDateTime.now())
+        val enumVal = TestEnum.ONE
 
         val document = Document()
 
@@ -82,6 +83,9 @@ class DocumentConversionTest {
 
 //        document.append("objVal", objVal)
         //Custom objects have no codec
+        //POJO Codec shown in FongoTest fixes this
+
+//        document.append("enumVal", enumVal)
 
         val db = fongoRule.mongoClient.getDatabase("testDb")
         db.getCollection("testCollection").insertOne(document)
@@ -105,6 +109,7 @@ class DocumentConversionTest {
                         eq("utilDateVal", utilDateVal)
 //                    eq("instantVal", instant)
 //                    eq("objVal", objVal)
+//                    eq("enumVal", enumVal)
                 )
         )
 
@@ -129,6 +134,7 @@ class DocumentConversionTest {
 
         assertThat(cursor.first()["mapVal", Document::class.java], Is(documentMap))
 
+        assertThat(cursor.first()["testenum", TestEnum::class.java], Is(TestEnum.ONE))
         assertThat(cursor.first()["thisWontBeFound", "default"], Is("default"))
     }
 
