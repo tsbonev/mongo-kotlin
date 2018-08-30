@@ -18,11 +18,10 @@ import org.junit.Test
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 import com.mongodb.client.model.CreateCollectionOptions
-import com.vividsolutions.jts.geom.Dimension.L
+import org.bson.RawBsonDocument
 import org.bson.codecs.configuration.CodecRegistries
 import org.bson.codecs.configuration.CodecRegistry
 import org.bson.codecs.pojo.PojoCodecProvider
-import java.time.LocalDate
 import java.time.LocalDateTime
 
 
@@ -112,6 +111,25 @@ class FongoTest {
         val cursor = db.getCollection("people").find(eq("_id", 123))
 
         assertThat(cursor.first().getInteger("_id"), Is(123))
+    }
+    
+    @Test
+    fun documentSize(){
+
+        val doc = Document(mapOf("_id" to 1))
+
+        for (i in 1..1201){
+            doc.append("i$i", i)
+        }
+
+        fongoRule.mongoClient
+                .getDatabase("db")
+                .getCollection("coll")
+                .insertOne(doc)
+        
+        val rawCollection = fongoRule.mongoClient.getDatabase("db").getCollection("coll", RawBsonDocument::class.java)
+        val cursor = rawCollection.find(eq("_id", 1)).iterator()
+        println(cursor.next().byteBuffer.remaining())
     }
 
     @Test
